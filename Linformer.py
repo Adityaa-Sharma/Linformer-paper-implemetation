@@ -37,8 +37,33 @@ class LinformerHead(nn.Module):
         self.query=nn.Linear(ModelConfig.n_embed,head_size,bias=False)
         self.dropout=nn.Dropout(ModelConfig.dropout)
         self.register_buffer("tril", torch.tril(torch.ones(ModelConfig.block_size, ModelConfig.block_size)))
+        self.E=get_EF_matrix(ModelConfig.n_embed,ModelConfig.k) # here k is reduced dimension
+        self.F=get_EF_matrix(ModelConfig.n_embed,ModelConfig.k)
+        
         
     def forward(self, x):
         B,T,C=x.shape #Batch size, Sequence length, Embedding size
-        key=self.key(x)
+        
+        key=self.key(x) #K # B,T,head_size
+        value=self.value(x) #V
+        query=self.query(x)#Q
+        
+        # projecting the key and value to the reduced dimension
+        
+        #clculating the attention matrix
+        # K,Q->T,C, E->C,K
+        #k_Proj->Q^T,E
+        k_proj=torch.matmul(key, self.E)
+        weight=torch.matmul(query,k_proj.transpose(1,2))/ModelConfig.k**0.5
+        weight = weight.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
+        weight=torch.softmax(weight,dim=-1)
+        weight=self.dropout(weight)
+        
+        #calculating the output
+        v_proj=torch.matmul(value,self.F)
+        out=torch.matmul(weight,v_proj)
+        return out
+        
+        
+        
         

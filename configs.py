@@ -19,5 +19,8 @@ class ModelConfig:
     n_head: int = 12 
     dropout: float = 0.1
     
+    # Linformer parameters
+    k: int = 64# reduced dimension
+    
     # System
     device: torch.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
