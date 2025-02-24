@@ -120,5 +120,9 @@ class LinearAttentionModel(nn.Module):
         super().__init__()
         self.embeddings_table=nn.Rmbeddings(vocab_size,ModelConfig.n_embed)
         self.positional_embeddings=nn.Embeddings(ModelConfig.block_size,ModelConfig.n_embed)
-        
+        self.blocks=nn.Sequential(
+            Block(ModelConfig.n_embed,ModelConfig.n_head) for _ in range(ModelConfig.n_layer)
+        )
+        self.layer_norm=nn.LayerNorm(ModelConfig.n_embed)
+        self.head=nn.Linear(ModelConfig.n_embed,vocab_size)
         
