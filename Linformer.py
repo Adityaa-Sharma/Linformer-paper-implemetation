@@ -12,7 +12,7 @@ from configs import ModelConfig
 #E,F
 def get_EF_matrix(n_embed,k,type='learnable',head_dim=None,bias=True): #n_embed=embedding size, k=reduced dimension
     if type=='convolution':
-        conv=nn.Conv1d(n_embed,k,kernel_size=int(n_embed/k),stride=int(n_embed/k),bias=bias)
+        conv=nn.Conv1d(head_dim,head_dim,kernel_size=int(n_embed/k),stride=int(n_embed/k),bias=bias)
         return conv
     elif type=='no-params':# notrmal distribution N(0,1/K)
         mat=torch.zeros(n_embed,k)
