@@ -99,6 +99,26 @@ class FeedForward(nn.Module):
             
     def forward(self,x):
         return self.net(x)
+    
+    
+class Block(nn.Module):
+    def __init__(self,n_embed,n_head):
+        super().__init__()
+        head_size=n_embed//n_head
+        self.MultiHeadLinearAttention=MultiHeadLinearAttention(n_head,head_size)
+        self.FeedForward=FeedForward(n_embed)
+        self.LayerNorm=nn.LayerNorm(n_embed)
+        self.LayerNorm2=nn.LayerNorm(n_embed)
         
+    def forward(self,x):
+        x=self.LayerNorm(x+self.MultiHeadLinearAttention(x))
+        x=self.LayerNorm2(x+self.FeedForward(x))
+        return x
+        
+class LinearAttentionModel(nn.Module):
+    def __init__(self,vocab_size):
+        super().__init__()
+        self.embeddings_table=nn.Rmbeddings(vocab_size,ModelConfig.n_embed)
+        self.positional_embeddings=nn.Embeddings(ModelConfig.block_size,ModelConfig.n_embed)
         
         
