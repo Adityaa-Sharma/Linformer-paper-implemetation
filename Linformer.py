@@ -29,7 +29,7 @@ def get_EF_matrix(n_embed,k,type='learnable',head_dim=None,bias=True): #n_embed=
 #LinformrHead
 
 class LinformerHead(nn.Module):
-    def __init__(self,head_size):
+    def __init__(self,head_size,E,F):
         super().__init__()
         self.head_size = head_size
         self.key=nn.Linear(ModelConfig.n_embed,head_size,bias=False)
@@ -37,9 +37,8 @@ class LinformerHead(nn.Module):
         self.query=nn.Linear(ModelConfig.n_embed,head_size,bias=False)
         self.dropout=nn.Dropout(ModelConfig.dropout)
         self.register_buffer("tril", torch.tril(torch.ones(ModelConfig.block_size, ModelConfig.block_size)))
-        self.E=get_EF_matrix(ModelConfig.n_embed,ModelConfig.k) # here k is reduced dimension
-        self.F=get_EF_matrix(ModelConfig.n_embed,ModelConfig.k)
-        
+        self.E=E
+        self.F=F
         
     def forward(self, x):
         B,T,C=x.shape #Batch size, Sequence length, Embedding size
@@ -64,6 +63,21 @@ class LinformerHead(nn.Module):
         out=torch.matmul(weight,v_proj)
         return out
         
+
+class MultiHeadLinearAttention(nn.Module):
+    def __init__(self,num_heads,head_size):
+        super().__init__()
+        self.heads = nn.ModuleList([
+        LinformerHead(head_size, get_EF_matrix(ModelConfig.n_embed, ModelConfig.k), get_EF_matrix(ModelConfig.n_embed, ModelConfig.k))
+        for _ in range(num_heads)])
+        self.proj=nn.Linear(ModelConfig.n_embed,ModelConfig.n_embed)
+        self.dropout=nn.Dropout(ModelConfig.dropout)
+        
+    def forward(self,x):
+        out=torch.cat([head(x) for head in self.heads],dim=-1)#concatenating along the head size --> (B,T,C)
+        out=self.proj(out)
+        return out
+    
         
         
         
