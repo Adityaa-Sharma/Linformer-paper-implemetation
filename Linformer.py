@@ -124,5 +124,39 @@ class LinearAttentionModel(nn.Module):
             Block(ModelConfig.n_embed,ModelConfig.n_head) for _ in range(ModelConfig.n_layer)
         )
         self.layer_norm=nn.LayerNorm(ModelConfig.n_embed)
-        self.head=nn.Linear(ModelConfig.n_embed,vocab_size)
+        self.lm_head=nn.Linear(ModelConfig.n_embed,vocab_size)
+        
+    def forward(self,idx,targets=None):
+        B,T=idx.shape
+        tok_embeddings=self.embeddings_table(idx)
+        pos_embeddings=self.positional_embeddings(torch.arange(T).to(idx.device))
+        x=tok_embeddings+pos_embeddings
+        x=self.blocks(x)
+        x=self.layer_norm(x)
+        logits=self.lm_head(x)
+        
+        if targets is None:
+            loss=None
+        else:
+            B,T,C=logits.shape
+            logits=logits.view(B*T,C)  #B,T,C->B*T,C
+            targets=targets.view(B*T) #B,T->B*T
+            loss=F.cross_entropy(logits,targets)
+        return logits,loss
+    
+    def generate(self,idx,max_len=1200):
+        for _ in range(max_len):
+            idx=idx[:,-ModelConfig.block_size:]
+            logits,loss=self(idx)
+            logits=logits[:, -1, :]
+            probs=F.softmax(logits,dim=-1)
+            idx_next=torch.multinomial(probs,num_samples=1)
+            idx=torch.cat([idx,idx_next],dim=-1)
+            
+            return idx
+            
+       
+        
+        
+        
         
