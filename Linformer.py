@@ -118,8 +118,8 @@ class Block(nn.Module):
 class LinearAttentionModel(nn.Module):
     def __init__(self,vocab_size):
         super().__init__()
-        self.embeddings_table=nn.Rmbeddings(vocab_size,ModelConfig.n_embed)
-        self.positional_embeddings=nn.Embeddings(ModelConfig.block_size,ModelConfig.n_embed)
+        self.embeddings_table=nn.Embedding(vocab_size,ModelConfig.n_embed)
+        self.positional_embeddings=nn.Embedding(ModelConfig.block_size,ModelConfig.n_embed)
         self.blocks=nn.Sequential(
             Block(ModelConfig.n_embed,ModelConfig.n_head) for _ in range(ModelConfig.n_layer)
         )
@@ -143,7 +143,7 @@ class LinearAttentionModel(nn.Module):
             targets=targets.view(B*T) #B,T->B*T
             loss=F.cross_entropy(logits,targets)
         return logits,loss
-    
+        
     def generate(self,idx,max_len=1200):
         for _ in range(max_len):
             idx=idx[:,-ModelConfig.block_size:]
@@ -153,7 +153,7 @@ class LinearAttentionModel(nn.Module):
             idx_next=torch.multinomial(probs,num_samples=1)
             idx=torch.cat([idx,idx_next],dim=-1)
             
-            return idx
+        return idx
             
        
         
