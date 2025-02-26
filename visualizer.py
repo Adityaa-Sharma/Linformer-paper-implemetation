@@ -4,8 +4,8 @@ import torch
 import numpy as np
 
 class Visualizer:
-    def __init__(self):
-        self.plot_dir = 'plots'
+    def __init__(self,plot_dir):
+        self.plot_dir = plot_dir
         os.makedirs(self.plot_dir, exist_ok=True)
     
     def to_numpy(self, tensor):
