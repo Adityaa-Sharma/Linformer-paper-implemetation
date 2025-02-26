@@ -8,17 +8,26 @@ class Visualizer:
         self.plot_dir = 'plots'
         os.makedirs(self.plot_dir, exist_ok=True)
     
+    def to_numpy(self, tensor):
+        """Safely convert tensor to numpy array regardless of device"""
+        if isinstance(tensor, (list, np.ndarray)):
+            return np.array(tensor)
+        if torch.is_tensor(tensor):
+            return tensor.detach().cpu().numpy()
+        return tensor
+
     def plot_training_metrics(self, train_losses, val_losses):
         """Plot training metrics using PyTorch operations"""
-        train_losses = torch.tensor(train_losses, dtype=torch.float32)
-        val_losses = torch.tensor(val_losses, dtype=torch.float32)
+        # Convert inputs to numpy arrays safely
+        train_losses_np = self.to_numpy(train_losses)
+        val_losses_np = self.to_numpy(val_losses)
         
         plt.figure(figsize=(12, 8))
         
         # 1. Standard training curve
         plt.subplot(2, 2, 1)
-        plt.plot(train_losses.cpu().numpy(), label='Training Loss', alpha=0.7)
-        plt.plot(val_losses.cpu().numpy(), label='Validation Loss', alpha=0.7)
+        plt.plot(train_losses_np, label='Training Loss', alpha=0.7)
+        plt.plot(val_losses_np, label='Validation Loss', alpha=0.7)
         plt.xlabel('Evaluation Steps')
         plt.ylabel('Loss')
         plt.title('Training and Validation Losses')
@@ -32,8 +41,8 @@ class Visualizer:
         def moving_average(data, window_size):
             return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
         
-        train_ma = moving_average(train_losses.cpu().numpy(), window_size)
-        val_ma = moving_average(val_losses.cpu().numpy(), window_size)
+        train_ma = moving_average(train_losses_np, window_size)
+        val_ma = moving_average(val_losses_np, window_size)
         
         plt.plot(train_ma, label=f'Train ({window_size}-step MA)', alpha=0.7)
         plt.plot(val_ma, label=f'Val ({window_size}-step MA)', alpha=0.7)
@@ -45,8 +54,8 @@ class Visualizer:
 
         # 3. Loss difference
         plt.subplot(2, 2, 3)
-        loss_diff = val_losses - train_losses
-        plt.plot(loss_diff.cpu().numpy(), label='Val - Train', color='purple', alpha=0.7)
+        loss_diff = val_losses_np - train_losses_np
+        plt.plot(loss_diff, label='Val - Train', color='purple', alpha=0.7)
         plt.axhline(y=0, color='r', linestyle='--', alpha=0.3)
         plt.xlabel('Evaluation Steps')
         plt.ylabel('Loss Difference')
@@ -56,8 +65,8 @@ class Visualizer:
 
         # 4. Loss distribution
         plt.subplot(2, 2, 4)
-        plt.hist(train_losses.cpu().numpy(), bins=50, alpha=0.5, label='Training', density=True)
-        plt.hist(val_losses.cpu().numpy(), bins=50, alpha=0.5, label='Validation', density=True)
+        plt.hist(train_losses_np, bins=50, alpha=0.5, label='Training', density=True)
+        plt.hist(val_losses_np, bins=50, alpha=0.5, label='Validation', density=True)
         plt.xlabel('Loss Value')
         plt.ylabel('Density')
         plt.title('Loss Distribution')
@@ -72,8 +81,9 @@ class Visualizer:
         """Plot per-epoch learning curve"""
         plt.figure(figsize=(10, 6))
         
-        epoch_train_losses = np.array(epoch_train_losses)
-        epoch_val_losses = np.array(epoch_val_losses)
+        # Convert inputs to numpy arrays safely
+        epoch_train_losses = self.to_numpy(epoch_train_losses)
+        epoch_val_losses = self.to_numpy(epoch_val_losses)
         epochs = np.arange(1, len(epoch_train_losses) + 1)
         
         plt.plot(epochs, epoch_train_losses, 'bo-', label='Training', alpha=0.7)
