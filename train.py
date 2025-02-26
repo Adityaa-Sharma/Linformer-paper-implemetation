@@ -102,6 +102,6 @@ class Trainer:
         self.epoch_val_losses.append(torch.tensor(self.epoch_val_losses).mean().item())
 
 
-def main():
+
     
     
