@@ -14,16 +14,17 @@ def get_EF_matrix(n_embed,k,type='learnable',head_dim=None,bias=True): #n_embed=
     if type=='convolution':
         conv=nn.Conv1d(head_dim,head_dim,kernel_size=int(n_embed/k),stride=int(n_embed/k),bias=bias)
         return conv
-    elif type=='no-params':# notrmal distribution N(0,1/K)
+    if type=='no-params':# notrmal distribution N(0,1/K)
         mat=torch.zeros(n_embed,k)
         nn.init.normal_(mat,mean=0,std=1/k)
         return mat
     
     #by default xavier initialization, i.e ~N(0,2/fan_in+fan_out) where fan_in=n_embed, fan_out=k
-    mat=nn.Linear(n_embed,k,bias=bias)
-    nn.init.xavier_normal_(mat.weight)
-    return mat
-        
+    # mat=nn.Linear(ModelConfig.batch_size,n_embed,k,bias=bias).weight
+    mat = torch.empty(ModelConfig.batch_size, ModelConfig.block_size, k)
+    torch.nn.init.xavier_normal_(mat)
+    # print("size of E,F matrix: ", mat.size()) 
+    return mat.to(device=ModelConfig.device)
 
 
 #LinformrHead
@@ -52,25 +53,33 @@ class LinformerHead(nn.Module):
     def forward(self, x):
         B,T,C=x.shape #Batch size, Sequence length, Embedding size
         
-        key=self.key(x) #K # B,T,head_size
-        value=self.value(x) #V
-        query=self.query(x)#Q
+        k=self.key(x) #K # B,T,head_size
+        v=self.value(x) #V
+        q=self.query(x)#Q
+        # print("shape of k,v,q: ", k.shape, v.shape, q.shape)
         
         # projecting the key and value to the reduced dimension
         
         #clculating the attention matrix
         # K,Q->T,C, E->C,K
         #k_Proj->Q^T,E
-        k_proj=torch.matmul(key, self.E)
-        weight=torch.matmul(query,k_proj.transpose(1,2))/ModelConfig.k**0.5
-        weight = weight.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
+        # k_proj = self.E(k) #change
+        k_proj=torch.matmul( self.E.transpose(1,2),k)
+        
+        # print("shape of k_proj: ", k_proj.shape)
+        weight=torch.matmul(q,k_proj.transpose(1,2))/ModelConfig.k**0.5
+        # print("shape of weight: ", weight.shape)
+        weight = weight.masked_fill(self.tril[:T, :ModelConfig.k] == 0, float('-inf'))
         weight=torch.softmax(weight,dim=-1)
         weight=self.dropout(weight)
         
         #calculating the output
-        v_proj=torch.matmul(value,self.F)
+        # v_proj = self.F(v) #change
+        v_proj=torch.matmul(self.E.transpose(1,2),v)
         out=torch.matmul(weight,v_proj)
         return out
+
+
         
 
 class MultiHeadLinearAttention(nn.Module):
@@ -129,11 +138,23 @@ class LinearAttentionModel(nn.Module):
         super().__init__()
         self.embeddings_table=nn.Embedding(vocab_size,ModelConfig.n_embed)
         self.positional_embeddings=nn.Embedding(ModelConfig.block_size,ModelConfig.n_embed)
-        self.blocks=nn.Sequential(
-            Block(ModelConfig.n_embed,ModelConfig.n_head) for _ in range(ModelConfig.n_layer)
+        self.blocks = nn.Sequential(
+            Block(ModelConfig.n_embed, ModelConfig.n_head),
+            Block(ModelConfig.n_embed, ModelConfig.n_head),
+            Block(ModelConfig.n_embed, ModelConfig.n_head)
         )
         self.layer_norm=nn.LayerNorm(ModelConfig.n_embed)
         self.lm_head=nn.Linear(ModelConfig.n_embed,vocab_size)
+        self.apply(self._init_weights)
+        
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
         
     def forward(self,idx,targets=None):
         B,T=idx.shape
@@ -163,9 +184,8 @@ class LinearAttentionModel(nn.Module):
             idx=torch.cat([idx,idx_next],dim=-1)
             
         return idx
-            
-       
-        
-        
-        
-        
+
+
+
+
+
