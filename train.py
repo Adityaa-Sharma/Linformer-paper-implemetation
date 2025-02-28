@@ -1,8 +1,9 @@
+import torch
 from Linformer import LinearAttentionModel
 from configs import ModelConfig
 from visualizer import Visualizer
 import matplotlib as plt
-import torch
+
 
 
 device = ModelConfig.device
@@ -101,6 +102,23 @@ class Trainer:
         self.epoch_train_losses.append(torch.tensor(self.epoch_train_losses).mean().item())
         self.epoch_val_losses.append(torch.tensor(self.epoch_val_losses).mean().item())
 
+
+def main():
+    #test input and then train on this  to test the functionality
+    device = ModelConfig.device
+    torch.manual_seed(1337)
+    model = LinearAttentionModel(ModelConfig.vocab_size).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=ModelConfig.lr)
+    tokenizer = None
+    train_data = torch.randint(ModelConfig.batch_size, ModelConfig.vocab_size, (ModelConfig.n_embed,))
+    val_data = torch.randint(ModelConfig.batch_size, ModelConfig.vocab_size, (ModelConfig.n_embed,))
+    trainer = Trainer(model, optimizer, tokenizer, train_data, val_data)
+    for epoch in range(ModelConfig.n_epochs):
+        trainer.train_epoch(epoch)
+    visualizer = Visualizer()
+    visualizer.plot_training_metrics(trainer.train_losses, trainer.val_losses)
+    print("Training complete")
+    
 
 
     
