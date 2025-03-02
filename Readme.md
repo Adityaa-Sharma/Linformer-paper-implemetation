@@ -41,9 +41,13 @@ Since \( k \) is a fixed, much smaller dimension, the computational complexity i
 
 Below is the validation loss plot obtained during training:
 
-![Validation Loss](./plots/training_analysis.png)
+<div align="center">
+  <img src="plots/images/val_loss.png" alt="Training Analysis" width="800"/>
+</div>
 
-![Learning Curve](./plots/learning_curve.png)
+<div align="center">
+  <img src="plots/images/loss_ratio.png" alt="Learning Curve" width="800"/>
+</div>
 
 ## Conclusion
 
